@@ -9,23 +9,50 @@ using UnityEngine;
 public sealed class NetworkSessionUI : MonoBehaviour
 {
     private string statusMessage = "Not connected";
+    private NetworkManager subscribedManager;
 
     private void OnEnable()
     {
-        NetworkManager.OnServerStarted += HandleServerStarted;
-        NetworkManager.OnClientConnectedCallback += HandleClientConnected;
-        NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+        TrySubscribe();
+    }
+
+    private void Update()
+    {
+        // The NetworkManager may be created after this component is enabled.
+        // Also handle a NetworkManager instance being replaced.
+        if (subscribedManager != NetworkManager.Singleton)
+        {
+            Unsubscribe();
+            TrySubscribe();
+        }
     }
 
     private void OnDisable()
     {
-        NetworkManager.OnServerStarted -= HandleServerStarted;
+        Unsubscribe();
+    }
 
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnClientConnectedCallback -= HandleClientConnected;
-            NetworkManager.Singleton.OnClientDisconnectCallback -= HandleClientDisconnected;
-        }
+    private void TrySubscribe()
+    {
+        NetworkManager manager = NetworkManager.Singleton;
+        if (manager == null || subscribedManager == manager)
+            return;
+
+        subscribedManager = manager;
+        subscribedManager.OnServerStarted += HandleServerStarted;
+        subscribedManager.OnClientConnectedCallback += HandleClientConnected;
+        subscribedManager.OnClientDisconnectCallback += HandleClientDisconnected;
+    }
+
+    private void Unsubscribe()
+    {
+        if (subscribedManager == null)
+            return;
+
+        subscribedManager.OnServerStarted -= HandleServerStarted;
+        subscribedManager.OnClientConnectedCallback -= HandleClientConnected;
+        subscribedManager.OnClientDisconnectCallback -= HandleClientDisconnected;
+        subscribedManager = null;
     }
 
     private void OnGUI()
